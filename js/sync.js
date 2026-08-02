@@ -74,7 +74,8 @@
       let count = 0;
       for (const b of blocks) {
         const first = b.trim().split('\n')[0];
-        if (format === 'vtt' && /^(NOTE|STYLE|REGION)\b/.test(first)) continue;
+        if (format === 'vtt' && /^(WEBVTT|NOTE|STYLE|REGION)\b/.test(first)) continue;
+        if (format === 'ass' && !/^Dialogue\s*:/i.test(first)) continue;
         count++;
       }
       return Math.max(0, count - parsedCount);
