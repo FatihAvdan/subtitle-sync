@@ -29,9 +29,9 @@
   }
 
   function setupDropZone(zoneId, inputId, filenameId, onLoad) {
-    const zone = $(zoneId);
-    const input = $(inputId);
-    const lbl = $(filenameId);
+    const zone = $('#' + zoneId);
+    const input = $('#' + inputId);
+    const lbl = $('#' + filenameId);
     input.addEventListener('change', () => {
       if (input.files.length > 0) {
         const f = input.files[0];
