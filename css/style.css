@@ -48,6 +48,7 @@ button:focus-visible, input:focus-visible, select:focus-visible {
   min-height: 100vh;
   padding: 40px 20px;
   gap: 40px;
+  overflow-y: auto;
   background:
     radial-gradient(ellipse 60% 40% at 50% -10%, rgba(56, 189, 248, 0.12), transparent),
     radial-gradient(ellipse 50% 35% at 80% 110%, rgba(99, 102, 241, 0.12), transparent),
@@ -361,6 +362,7 @@ button:focus-visible, input:focus-visible, select:focus-visible {
   pointer-events: none;
   background: rgba(7, 9, 14, 0.7);
 }
+.timeline-loading[hidden] { display: none; }
 .timeline-loading .bar {
   width: 200px;
   height: 4px;
