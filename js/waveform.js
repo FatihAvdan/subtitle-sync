@@ -76,7 +76,10 @@
 
   function runDecoder(mp4, track, onProgress, isCancelled) {
     const samplesTotal = track.nb_samples || 0;
-    const durationSec = track.duration / track.timescale;
+    const durationSec = (track.duration || 0) / (track.timescale || 1);
+    if (!track.audio || !track.audio.sample_rate || !samplesTotal) {
+      return Promise.reject(new Error('Video içinde ses izi bulunamadı'));
+    }
     let description;
     try {
       const trak = mp4.getTrackById(track.id);
@@ -88,7 +91,7 @@
     } catch (e) { description = undefined; }
 
     return new Promise((resolve, reject) => {
-      const acc = new PeakAccumulator(track.samplerate);
+      const acc = new PeakAccumulator(track.audio.sample_rate);
       let gotSamples = 0;
       let cancelled = false;
       let decoder = null;
@@ -107,9 +110,17 @@
           output: (frame) => {
             const n = frame.numberOfFrames;
             if (n > 0) {
-              const buf = new Float32Array(n * frame.numberOfChannels);
+              const ch = frame.numberOfChannels || 1;
+              const buf = new Float32Array(n * ch);
               frame.copyTo(buf);
-              acc.push(buf.subarray(0, n));
+              const isInterleaved = frame.format && frame.format.indexOf('planar') === -1;
+              if (isInterleaved) {
+                const ch0 = new Float32Array(n);
+                for (let i = 0; i < n; i++) ch0[i] = buf[i * ch];
+                acc.push(ch0);
+              } else {
+                acc.push(buf.subarray(0, n));
+              }
             }
             frame.close();
           },
@@ -117,8 +128,8 @@
         });
         decoder.configure({
           codec: track.codec || 'mp4a.40.2',
-          sampleRate: track.samplerate,
-          numberOfChannels: track.channel_count || 2,
+          sampleRate: track.audio.sample_rate,
+          numberOfChannels: track.audio.channel_count || 2,
           description: description ? new Uint8Array(description) : undefined
         });
       } catch (e) {
@@ -126,11 +137,14 @@
       }
 
       decoder.addEventListener('dequeue', () => {
+        if (finished) return;
         if (gotSamples >= samplesTotal && decoder.decodeQueueSize === 0) {
           decoder.flush().then(
             () => finish(null, acc.result(durationSec)),
             (e) => finish(e, null)
           );
+        } else if (gotSamples < samplesTotal && decoder.decodeQueueSize <= 20) {
+          mp4.start();
         }
       });
 
@@ -146,7 +160,8 @@
             data: s.data
           }));
         }
-        onProgress(Math.min(1, gotSamples / (samplesTotal || 1)));
+        onProgress(Math.min(1, gotSamples / samplesTotal));
+        if (finished) return;
         if (decoder.decodeQueueSize > 20) mp4.stop();
         else if (gotSamples < samplesTotal) mp4.start();
       };
@@ -162,9 +177,16 @@
     const wasVolume = videoEl.volume;
     const wasTime = videoEl.currentTime;
     return new Promise((resolve, reject) => {
+      try {
+        if (ctx.state === 'suspended') {
+          const r = ctx.resume();
+          if (r && r.catch) r.catch(function () {});
+        }
+      } catch (e) {}
       let settled = false;
       let src = null;
       let proc = null;
+      let gainNode = null;
       let ticker = null;
       const cleanup = (err, result) => {
         if (settled) return;
@@ -175,6 +197,7 @@
         try { if (src) src.disconnect(); } catch (e) {}
         try { if (proc) proc.disconnect(); } catch (e) {}
         try { if (proc) proc.onaudioprocess = null; } catch (e) {}
+        try { if (gainNode) gainNode.disconnect(); } catch (e) {}
         if (wasPaused) videoEl.pause();
         videoEl.volume = wasVolume;
         videoEl.currentTime = wasTime;
@@ -194,8 +217,11 @@
         if (!audioTrack) return cleanup(new Error('Video içinde ses izi bulunamadı'), null);
         src = ctx.createMediaStreamSource(new MediaStream([audioTrack]));
         proc = ctx.createScriptProcessor(4096, 1, 1);
+        gainNode = ctx.createGain();
+        gainNode.gain.value = 0;
         src.connect(proc);
-        proc.connect(ctx.destination);
+        proc.connect(gainNode);
+        gainNode.connect(ctx.destination);
         proc.onaudioprocess = (e) => {
           acc.push(e.inputBuffer.getChannelData(0));
           onProgress(Math.min(1, videoEl.currentTime / (videoEl.duration || 1)));
