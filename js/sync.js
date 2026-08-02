@@ -51,26 +51,33 @@
         state.entries = r.entries;
         state.assHeader = r.header;
         state.assFields = r.fields;
-        skipped = countSkipped(decoded, r.entries.length);
+        skipped = countSkipped(decoded, r.entries.length, format);
       } else {
         const parsed = global.SubtitleFormats.parse(decoded, format);
         const valid = parsed.length;
         state.entries = parsed;
         state.assHeader = null;
         state.assFields = null;
-        skipped = countSkipped(decoded, valid);
+        skipped = countSkipped(decoded, valid, format);
       }
       applyOffset();
       renderer.setEntries(state.entries);
+      renderer.setOffset(0);
       renderer.setSelected(-1);
       renderList();
       updateViews();
       return { count: state.entries.length, skipped };
     }
 
-    function countSkipped(text, parsedCount) {
+    function countSkipped(text, parsedCount, format) {
       const blocks = text.replace(/\r\n/g, '\n').split(/\n{2,}/).filter((b) => b.trim() !== '');
-      return Math.max(0, blocks.length - parsedCount);
+      let count = 0;
+      for (const b of blocks) {
+        const first = b.trim().split('\n')[0];
+        if (format === 'vtt' && /^(NOTE|STYLE|REGION)\b/.test(first)) continue;
+        count++;
+      }
+      return Math.max(0, count - parsedCount);
     }
 
     function renderList() {
@@ -241,6 +248,7 @@
       state.selectedIdx = -1;
       lastActiveIdx = -1;
       renderer.setEntries([]);
+      renderer.setOffset(0);
       renderList();
       updateViews();
       el.overlay.hidden = true;
@@ -252,7 +260,10 @@
       el.canvas.addEventListener('pointerdown', (e) => {
         const idx = renderer.blockAtX(e.clientX);
         if (idx >= 0) {
-          drag = { idx, startX: e.clientX, moved: false };
+          drag = { idx, startX: e.clientX, moved: false, wasPlaying: false };
+          const v = global.Player.video;
+          if (!v.paused) { v.pause(); drag.wasPlaying = true; }
+          renderer.setViewCenter(Math.max(0, global.Player.currentTime));
           el.canvas.classList.add('dragging-block');
           el.canvas.setPointerCapture(e.pointerId);
         } else {
@@ -264,7 +275,6 @@
         if (Math.abs(e.clientX - drag.startX) > 4) drag.moved = true;
         if (drag.moved) {
           const t = renderer.timeAtX(e.clientX);
-          renderer.setViewCenter(t);
           state.offsetMs = Math.round(t * 1000 - state.entries[drag.idx].origStartMs);
           renderer.setOffset(state.offsetMs);
           updateOffsetDisplay();
@@ -275,9 +285,11 @@
         const idx = drag.idx;
         const moved = drag.moved;
         const dropMs = Math.round(renderer.timeAtX(e.clientX) * 1000);
+        const wasPlaying = drag.wasPlaying;
         drag = null;
         el.canvas.classList.remove('dragging-block');
         renderer.resetView();
+        if (wasPlaying) global.Player.togglePlay();
         if (moved) {
           applyOffset();
           renderList();
@@ -288,9 +300,16 @@
           selectEntry(idx);
         }
       });
-      el.canvas.addEventListener('pointerleave', () => {
-        if (drag) { drag = null; el.canvas.classList.remove('dragging-block'); renderer.resetView(); }
-      });
+      const endDrag = () => {
+        if (!drag) return;
+        const wasPlaying = drag.wasPlaying;
+        drag = null;
+        el.canvas.classList.remove('dragging-block');
+        renderer.resetView();
+        if (wasPlaying) global.Player.togglePlay();
+      };
+      el.canvas.addEventListener('pointerleave', endDrag);
+      el.canvas.addEventListener('pointercancel', endDrag);
     }
 
     // toast helper used by sync actions
@@ -311,8 +330,7 @@
       download,
       clear,
       initTimeline,
-      get offsetMs() { return state.offsetMs; },
-      set offsetMs(v) { state.offsetMs = v; }
+      get offsetMs() { return state.offsetMs; }
     };
   }
 
