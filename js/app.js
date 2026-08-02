@@ -11,6 +11,7 @@
   let sync = null;
   let renderer = null;
   let extractionCancelled = false;
+  let session = 0;
 
   function toast(msg, type) {
     const el = $('#toast');
@@ -40,6 +41,9 @@
       }
     });
     zone.addEventListener('click', () => input.click());
+    zone.querySelectorAll('select').forEach((sel) => {
+      sel.addEventListener('click', (e) => e.stopPropagation());
+    });
     zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('drag-over'); });
     zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
     zone.addEventListener('drop', (e) => {
@@ -72,6 +76,8 @@
 
   function startSync() {
     if (!videoFile || !srtFile) return;
+    session++;
+    const mySession = session;
     $('#load-screen').classList.remove('active');
     $('#sync-screen').classList.add('active');
 
@@ -85,9 +91,11 @@
     updateSubInfo(format, r);
 
     global.Player.load(videoFile).then(() => {
+      if (mySession !== session) return;
       renderer.resize();
       extractWaveform();
     }).catch((e) => {
+      if (mySession !== session) return;
       console.error('Video load:', e);
       goBack();
       toast((e && e.message ? e.message : 'Video yüklenemedi') + ' — başka bir dosya deneyin.', 'error');
@@ -130,6 +138,7 @@
   }
 
   function goBack() {
+    session++;
     extractionCancelled = true;
     global.Player.cleanup();
     sync.clear();
@@ -194,6 +203,7 @@
     document.addEventListener('keydown', (e) => {
       if (!$('#sync-screen').classList.contains('active')) return;
       if (e.target.tagName === 'INPUT') return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
       switch (e.key) {
         case ' ': e.preventDefault(); global.Player.togglePlay(); break;
         case 'ArrowLeft': global.Player.skip(-1); break;

@@ -57,6 +57,7 @@
           const handleError = () => finish(reject, new Error('Video yüklenemedi'));
           video.addEventListener('loadedmetadata', handleMeta, { once: true });
           video.addEventListener('error', handleError, { once: true });
+          if (video.src) { URL.revokeObjectURL(video.src); }
           video.src = URL.createObjectURL(file);
         });
       },
