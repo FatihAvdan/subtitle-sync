@@ -5,6 +5,7 @@
   const $ = (s) => document.querySelector(s);
 
   let videoFile = null;
+  let videoRaw = null;
   let srtFile = null;
   let srtRaw = null;
   let sync = null;
