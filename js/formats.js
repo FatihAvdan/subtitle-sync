@@ -143,7 +143,7 @@
     const startMs = assTimeToMs(values[startIdx].trim());
     const endMs = assTimeToMs(values[endIdx].trim());
     if (startMs < 0 || endMs < 0 || endMs < startMs) return null;
-    const assFields = fields.map((f, j) => (j === textIdx ? null : values[j]));
+    const assFields = fields.map((f, j) => (j === textIdx || j === startIdx || j === endIdx ? null : values[j]));
     return { startMs, endMs, text: text.replace(/\\[nN]/g, '\n'), assFields };
   }
 
