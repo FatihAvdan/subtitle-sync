@@ -4,409 +4,37 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Subtitle Sync</title>
-<style>
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-:root {
-  --bg: #0f0f0f;
-  --surface: #1a1a1a;
-  --surface2: #252525;
-  --border: #333;
-  --text: #e0e0e0;
-  --text-dim: #888;
-  --accent: #4da6ff;
-  --accent-hover: #6bb8ff;
-  --danger: #ff4d4d;
-  --success: #4dff88;
-  --radius: 8px;
-}
-
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  min-height: 100vh;
-  overflow-x: hidden;
-}
-
-.screen { display: none; }
-.screen.active { display: flex; }
-
-/* ── LOAD SCREEN ── */
-#load-screen {
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  padding: 40px 20px;
-  gap: 32px;
-}
-#load-screen h1 {
-  font-size: 32px;
-  font-weight: 300;
-  letter-spacing: 2px;
-  color: var(--accent);
-}
-
-.drop-zones {
-  display: flex;
-  gap: 24px;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-.drop-zone {
-  width: 340px;
-  height: 200px;
-  border: 2px dashed var(--border);
-  border-radius: var(--radius);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  cursor: pointer;
-  transition: border-color .2s, background .2s;
-  background: var(--surface);
-}
-.drop-zone:hover, .drop-zone.drag-over {
-  border-color: var(--accent);
-  background: var(--surface2);
-}
-.drop-zone.loaded {
-  border-style: solid;
-  border-color: var(--success);
-}
-.drop-zone .icon { font-size: 36px; }
-.drop-zone .label { font-size: 14px; color: var(--text-dim); }
-.drop-zone .filename { font-size: 13px; color: var(--accent); max-width: 90%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.drop-zone .encoding-row { display: flex; align-items: center; gap: 6px; margin-top: 4px; }
-.drop-zone .encoding-row select {
-  background: var(--bg); color: var(--text); border: 1px solid var(--border);
-  border-radius: 4px; padding: 3px 6px; font-size: 11px;
-}
-.drop-zone .encoding-row label { font-size: 11px; color: var(--text-dim); }
-.drop-zone input[type=file] { display: none; }
-
-#go-sync {
-  padding: 14px 48px;
-  font-size: 16px;
-  border: none;
-  border-radius: var(--radius);
-  background: var(--accent);
-  color: #000;
-  cursor: pointer;
-  font-weight: 600;
-  transition: opacity .2s;
-}
-#go-sync:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
-#go-sync:not(:disabled):hover { background: var(--accent-hover); }
-
-/* ── SYNC SCREEN ── */
-#sync-screen {
-  flex-direction: column;
-  height: 100vh;
-}
-
-.topbar {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 10px 20px;
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-}
-.topbar .back-btn {
-  background: none;
-  border: 1px solid var(--border);
-  color: var(--text);
-  padding: 6px 16px;
-  border-radius: var(--radius);
-  cursor: pointer;
-  font-size: 13px;
-}
-.topbar .back-btn:hover { background: var(--surface2); }
-.topbar .file-info { font-size: 13px; color: var(--text-dim); }
-.topbar .file-info span { color: var(--accent); }
-.topbar .spacer { flex: 1; }
-.topbar .save-btn {
-  padding: 8px 24px;
-  border: none;
-  border-radius: var(--radius);
-  background: var(--success);
-  color: #000;
-  cursor: pointer;
-  font-weight: 600;
-  font-size: 13px;
-}
-.topbar .save-btn:hover { opacity: 0.85; }
-
-.main-area {
-  display: flex;
-  flex: 1;
-  min-height: 0;
-}
-
-.player-panel {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  background: #000;
-  position: relative;
-  min-width: 0;
-}
-
-.video-wrapper {
-  flex: 1;
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #000;
-}
-.video-wrapper video {
-  max-width: 100%;
-  max-height: 100%;
-}
-
-.sub-overlay {
-  position: absolute;
-  bottom: 60px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(0,0,0,0.75);
-  color: #fff;
-  padding: 8px 16px;
-  border-radius: 4px;
-  font-size: 18px;
-  text-align: center;
-  max-width: 85%;
-  pointer-events: none;
-  text-shadow: 1px 1px 2px #000;
-}
-
-.video-controls {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  background: var(--surface);
-  border-top: 1px solid var(--border);
-}
-
-.ctrl-btn {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  color: var(--text);
-  padding: 6px 14px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 13px;
-  white-space: nowrap;
-}
-.ctrl-btn:hover { background: #333; }
-.ctrl-btn.accent { background: var(--accent); color: #000; border-color: var(--accent); }
-.ctrl-btn.accent:hover { background: var(--accent-hover); }
-
-.current-time {
-  font-size: 15px;
-  font-family: 'Courier New', monospace;
-  color: var(--accent);
-  min-width: 110px;
-  text-align: center;
-}
-
-.time-slider {
-  flex: 1;
-  -webkit-appearance: none;
-  appearance: none;
-  height: 4px;
-  background: var(--border);
-  border-radius: 2px;
-  outline: none;
-  cursor: pointer;
-}
-.time-slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: var(--accent);
-  cursor: pointer;
-}
-
-/* ── SIDEBAR ── */
-.sidebar {
-  width: 380px;
-  background: var(--surface);
-  border-left: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  flex-shrink: 0;
-}
-
-.sub-list-header {
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--border);
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-dim);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
-.sub-list {
-  flex: 1;
-  overflow-y: auto;
-  min-height: 0;
-}
-.sub-entry {
-  padding: 8px 16px;
-  border-bottom: 1px solid var(--border);
-  cursor: pointer;
-  transition: background .15s;
-}
-.sub-entry:hover { background: var(--surface2); }
-.sub-entry.selected { background: #1a3350; border-left: 3px solid var(--accent); padding-left: 13px; }
-.sub-entry.active-playing { background: #1a3a1a; }
-.sub-entry .sub-time {
-  font-size: 11px;
-  color: var(--text-dim);
-  font-family: 'Courier New', monospace;
-  margin-bottom: 2px;
-}
-.sub-entry .sub-index {
-  font-size: 10px;
-  color: var(--text-dim);
-  margin-right: 6px;
-}
-.sub-entry .sub-text {
-  font-size: 14px;
-  line-height: 1.3;
-}
-
-/* ── SYNC PANEL ── */
-.sync-panel {
-  background: var(--surface2);
-  border-top: 1px solid var(--border);
-  padding: 14px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.sync-panel .row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.sync-panel label {
-  font-size: 12px;
-  color: var(--text-dim);
-  white-space: nowrap;
-}
-
-.sync-panel input[type=text] {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  color: var(--text);
-  padding: 6px 10px;
-  border-radius: 4px;
-  font-family: 'Courier New', monospace;
-  font-size: 14px;
-  width: 140px;
-}
-.sync-panel input[type=text]:focus { outline: none; border-color: var(--accent); }
-
-.sync-panel .selected-info {
-  font-size: 12px;
-  color: var(--text-dim);
-  flex: 1;
-}
-
-.offset-display {
-  font-size: 22px;
-  font-family: 'Courier New', monospace;
-  font-weight: bold;
-  color: var(--accent);
-  text-align: center;
-  padding: 4px 0;
-}
-
-.fine-tune {
-  display: flex;
-  gap: 6px;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-.fine-tune button {
-  padding: 6px 14px;
-  font-size: 13px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--surface);
-  color: var(--text);
-  cursor: pointer;
-  font-family: 'Courier New', monospace;
-}
-.fine-tune button:hover { background: var(--surface2); }
-
-.empty-state {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  color: var(--text-dim);
-  font-size: 14px;
-  padding: 20px;
-  text-align: center;
-}
-
-/* ── SCROLLBAR ── */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: var(--bg); }
-::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
-
-/* ── RESPONSIVE ── */
-@media (max-width: 900px) {
-  .main-area { flex-direction: column; }
-  .sidebar { width: 100%; height: 280px; border-left: none; border-top: 1px solid var(--border); }
-  .sub-list { max-height: 200px; }
-}
-</style>
+<link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
 <!-- ════════ LOAD SCREEN ════════ -->
 <div id="load-screen" class="screen active">
-  <h1>SUBTITLE SYNC</h1>
+  <div class="brand">
+    <h1>SUBTITLE SYNC</h1>
+    <p>Video ile altyazıyı saniyeler içinde hizalayın — her şey tarayıcınızda kalır.</p>
+  </div>
   <div class="drop-zones">
-    <div class="drop-zone" id="video-zone" onclick="document.getElementById('video-input').click()">
+    <div class="drop-zone" id="video-zone">
       <div class="icon">🎬</div>
       <div class="label">Video dosyasını sürükle veya seç</div>
       <div class="filename" id="video-filename"></div>
       <input type="file" id="video-input" accept="video/*">
     </div>
-    <div class="drop-zone" id="srt-zone" onclick="document.getElementById('srt-input').click()">
+    <div class="drop-zone" id="srt-zone">
       <div class="icon">📝</div>
       <div class="label">Altyazı dosyasını sürükle veya seç</div>
       <div class="filename" id="srt-filename"></div>
-      <div class="encoding-row">
-        <label for="encoding-select">Kodlama:</label>
-        <select id="encoding-select" onclick="event.stopPropagation()" onchange="onEncodingChange()">
+      <div class="meta-row">
+        <span class="meta-label">Kodlama:</span>
+        <select id="encoding-select">
           <option value="utf-8" selected>UTF-8</option>
           <option value="windows-1254">Windows-1254 (Türkçe)</option>
           <option value="iso-8859-9">ISO-8859-9 (Türkçe)</option>
           <option value="windows-1252">Windows-1252</option>
         </select>
       </div>
-      <input type="file" id="srt-input" accept=".srt,.txt">
+      <input type="file" id="srt-input" accept=".srt,.vtt,.ass,.ssa,.txt">
     </div>
   </div>
   <button id="go-sync" disabled>Hizalamaya Geç →</button>
@@ -415,11 +43,16 @@ body {
 <!-- ════════ SYNC SCREEN ════════ -->
 <div id="sync-screen" class="screen">
   <div class="topbar">
-    <button class="back-btn" onclick="goBack()">← Geri</button>
-    <div class="file-info">Video: <span id="info-video"></span></div>
-    <div class="file-info">Altyazı: <span id="info-srt"></span></div>
+    <span class="brand-mini">SUBTITLE SYNC</span>
+    <div class="file-chip"><span class="chip-label">Video:</span><span class="chip-value" id="info-video"></span></div>
+    <div class="file-chip"><span class="chip-label">Altyazı:</span><span class="chip-value" id="info-srt"></span><span class="chip-badge" id="info-format">SRT</span></div>
+    <div class="status-chip" id="wave-status">
+      <span class="dot"></span>
+      <span id="wave-status-text">Ses dalgası bekleniyor</span>
+    </div>
     <div class="spacer"></div>
-    <button class="save-btn" onclick="downloadSRT()">💾 Altyazıyı Kaydet</button>
+    <button class="back-btn" id="back-btn">← Geri</button>
+    <button class="save-btn" id="save-btn">💾 Kaydet</button>
   </div>
 
   <div class="main-area">
@@ -429,18 +62,21 @@ body {
         <div class="sub-overlay" id="sub-overlay" hidden></div>
       </div>
       <div class="video-controls">
-        <button class="ctrl-btn" onclick="skipTime(-5)">⏪ -5s</button>
-        <button class="ctrl-btn" onclick="skipTime(-1)">◁ -1s</button>
-        <button class="ctrl-btn accent" id="play-btn" onclick="togglePlay()">▶ Oynat</button>
-        <button class="ctrl-btn" onclick="skipTime(1)">▷ +1s</button>
-        <button class="ctrl-btn" onclick="skipTime(5)">⏩ +5s</button>
+        <button class="ctrl-btn" id="btn-minus-5">⏪ -5s</button>
+        <button class="ctrl-btn" id="btn-minus-1">◁ -1s</button>
+        <button class="ctrl-btn accent" id="play-btn">▶ Oynat</button>
+        <button class="ctrl-btn" id="btn-plus-1">▷ +1s</button>
+        <button class="ctrl-btn" id="btn-plus-5">⏩ +5s</button>
         <span class="current-time" id="time-display">00:00:00,000</span>
         <input type="range" class="time-slider" id="time-slider" min="0" step="0.1" value="0">
       </div>
     </div>
 
     <div class="sidebar">
-      <div class="sub-list-header">Altyazı Listesi</div>
+      <div class="sub-list-header">
+        <span>Altyazı Listesi</span>
+        <span class="sub-count" id="sub-count"></span>
+      </div>
       <div class="sub-list" id="sub-list">
         <div class="empty-state">Henüz altyazı yüklenmedi</div>
       </div>
@@ -451,426 +87,40 @@ body {
           <span class="selected-info" id="selected-info">—</span>
         </div>
         <div class="row">
-          <button class="ctrl-btn accent" onclick="captureTime()">📍 Bu anı yakala</button>
+          <button class="ctrl-btn accent" id="capture-btn">📍 Bu anı yakala</button>
           <span style="font-size:12px;color:var(--text-dim)">veya</span>
           <input type="text" id="manual-time" placeholder="00:00:00,000" maxlength="12">
-          <button class="ctrl-btn" onclick="manualAlign()">Hizala</button>
+          <button class="ctrl-btn" id="manual-align-btn">Hizala</button>
         </div>
         <div class="fine-tune">
-          <button onclick="fineTune(-1000)" title="-1 saniye">« -1s</button>
-          <button onclick="fineTune(-100)" title="-100 milisaniye">-100ms</button>
-          <button onclick="fineTune(100)" title="+100 milisaniye">+100ms</button>
-          <button onclick="fineTune(1000)" title="+1 saniye">+1s »</button>
-          <button onclick="resetOffset()" style="color:var(--danger)">↺ Sıfırla</button>
+          <button id="ft-1000m" title="-1 saniye">« -1s</button>
+          <button id="ft-100m" title="-100 milisaniye">-100ms</button>
+          <button id="ft-plus-100m" title="+100 milisaniye">+100ms</button>
+          <button id="ft-plus-1000m" title="+1 saniye">+1s »</button>
+          <button id="reset-offset" class="danger">↺ Sıfırla</button>
         </div>
       </div>
     </div>
   </div>
+
+  <div class="timeline-container">
+    <canvas id="waveform"></canvas>
+    <div class="timeline-loading" id="timeline-loading" hidden>
+      <div id="timeline-loading-text">Ses dalgası çözümleniyor...</div>
+      <div class="bar"><div class="bar-fill" id="timeline-bar-fill"></div></div>
+    </div>
+    <div class="timeline-hover-time" id="timeline-hover" hidden></div>
+    <div class="timeline-hint">Sürükleyerek hizala · tıkla ve seç · boşluk = oynat</div>
+  </div>
 </div>
 
-<script>
-"use strict";
+<div id="toast"></div>
 
-const $ = (s) => document.querySelector(s);
-const $$ = (s) => document.querySelectorAll(s);
-
-let videoFile = null;
-let srtFile = null;
-let srtRaw = null;
-let srtEntries = [];        // {index, startMs, endMs, text, origStartMs, origEndMs}
-let offsetMs = 0;
-let selectedIdx = -1;
-
-// ── LOAD SCREEN LOGIC ──
-
-function setupDropZone(zoneId, inputId, filenameId, onLoad) {
-  const zone = document.getElementById(zoneId);
-  const input = document.getElementById(inputId);
-  const lbl = document.getElementById(filenameId);
-
-  input.addEventListener('change', () => {
-    if (input.files.length > 0) {
-      const f = input.files[0];
-      lbl.textContent = f.name;
-      zone.classList.add('loaded');
-      onLoad(f, input);
-    }
-  });
-
-  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
-  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
-  zone.addEventListener('drop', e => {
-    e.preventDefault();
-    zone.classList.remove('drag-over');
-    const f = e.dataTransfer.files[0];
-    if (!f) return;
-    lbl.textContent = f.name;
-    zone.classList.add('loaded');
-    input.files = e.dataTransfer.files;
-    onLoad(f, input);
-  });
-}
-
-function onEncodingChange() {
-  if (!srtRaw || !srtFile) return;
-  const enc = $('#encoding-select').value;
-  const decoder = new TextDecoder(enc);
-  const text = decoder.decode(srtRaw);
-  parseSRT(text);
-  if (srtEntries.length > 0) renderSubList();
-  updateSelectedInfo();
-  updateOffsetDisplay();
-}
-
-setupDropZone('video-zone', 'video-input', 'video-filename', (f) => {
-  videoFile = f;
-  $('#go-sync').disabled = !(videoFile && srtFile);
-});
-
-setupDropZone('srt-zone', 'srt-input', 'srt-filename', (f) => {
-  srtFile = f;
-  const reader = new FileReader();
-  reader.onload = () => {
-    srtRaw = new Uint8Array(reader.result);
-    onEncodingChange();
-    $('#go-sync').disabled = !(videoFile && srtFile);
-  };
-  reader.readAsArrayBuffer(f);
-});
-
-$('#go-sync').addEventListener('click', () => {
-  if (!videoFile || !srtFile) return;
-  startSync();
-});
-
-// ── SYNC SCREEN LOGIC ──
-
-function startSync() {
-  if (!videoFile || !srtFile) return;
-  $('#load-screen').classList.remove('active');
-  $('#sync-screen').classList.add('active');
-
-  const videoUrl = URL.createObjectURL(videoFile);
-  const video = $('#video-player');
-  video.src = videoUrl;
-
-  $('#info-video').textContent = videoFile.name;
-  $('#info-srt').textContent = srtFile.name;
-
-  // re-decode SRT with current encoding selection and re-render
-  if (srtRaw) {
-    const enc = $('#encoding-select').value;
-    const decoder = new TextDecoder(enc);
-    const text = decoder.decode(srtRaw);
-    parseSRT(text);
-    renderSubList();
-    updateSelectedInfo();
-    updateOffsetDisplay();
-  }
-
-  video.addEventListener('loadedmetadata', () => {
-    const slider = $('#time-slider');
-    slider.max = video.duration;
-  });
-
-  video.addEventListener('timeupdate', () => {
-    const t = video.currentTime;
-    $('#time-display').textContent = msToTimestamp(t * 1000);
-    $('#time-slider').value = t;
-    updateActiveSubtitle(t);
-  });
-
-  $('#time-slider').addEventListener('input', () => {
-    video.currentTime = parseFloat($('#time-slider').value);
-  });
-}
-
-function goBack() {
-  URL.revokeObjectURL($('#video-player').src);
-  $('#video-player').src = '';
-  $('#sync-screen').classList.remove('active');
-  $('#load-screen').classList.add('active');
-  srtEntries = [];
-  srtRaw = null;
-  offsetMs = 0;
-  selectedIdx = -1;
-  renderSubList();
-}
-
-// ── SRT PARSING ──
-
-function timestampToMs(ts) {
-  const m = /(\d{1,}):(\d{2}):(\d{2})[,.](\d{3})/.exec(ts);
-  if (!m) return -1;
-  const h = parseInt(m[1]), min = parseInt(m[2]), s = parseInt(m[3]), mil = parseInt(m[4]);
-  return h * 3600000 + min * 60000 + s * 1000 + mil;
-}
-
-function msToTimestamp(ms) {
-  if (ms < 0) ms = 0;
-  const h = Math.floor(ms / 3600000);
-  const m = Math.floor((ms % 3600000) / 60000);
-  const s = Math.floor((ms % 60000) / 1000);
-  const mil = Math.floor(ms % 1000);
-  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')},${String(mil).padStart(3,'0')}`;
-}
-
-function parseSRT(text) {
-  srtEntries = [];
-  selectedIdx = -1;
-  offsetMs = 0;
-
-  // strip BOM
-  if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
-
-  const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim();
-  const blocks = normalized.split(/\n\n+/);
-
-  for (const block of blocks) {
-    const lines = block.trim().split('\n');
-    if (lines.length < 2) continue;
-    const idx = parseInt(lines[0]);
-    if (isNaN(idx)) continue;
-    const timeMatch = /(\d{1,}:\d{2}:\d{2}[,.]\d{3})\s*-->\s*(\d{1,}:\d{2}:\d{2}[,.]\d{3})/.exec(lines[1]);
-    if (!timeMatch) continue;
-    const startMs = timestampToMs(timeMatch[1]);
-    const endMs = timestampToMs(timeMatch[2]);
-    if (startMs < 0 || endMs < 0) continue;
-    const text = lines.slice(2).join('\n').trim();
-    srtEntries.push({
-      index: idx,
-      startMs, endMs,
-      origStartMs: startMs,
-      origEndMs: endMs,
-      text
-    });
-  }
-}
-
-function applyOffset() {
-  for (const e of srtEntries) {
-    e.startMs = e.origStartMs + offsetMs;
-    e.endMs = e.origEndMs + offsetMs;
-  }
-}
-
-// ── RENDER ──
-
-function renderSubList() {
-  const container = $('#sub-list');
-  if (srtEntries.length === 0) {
-    container.innerHTML = '<div class="empty-state">Henüz altyazı yüklenmedi</div>';
-    return;
-  }
-  lastActiveIdx = -1;
-  applyOffset();
-  let html = '';
-  for (let i = 0; i < srtEntries.length; i++) {
-    const e = srtEntries[i];
-    const sel = i === selectedIdx ? ' selected' : '';
-    html += `<div class="sub-entry${sel}" data-idx="${i}" onclick="selectEntry(${i})">
-      <div class="sub-time"><span class="sub-index">#${e.index}</span>${msToTimestamp(e.startMs)} → ${msToTimestamp(e.endMs)}</div>
-      <div class="sub-text">${escapeHtml(e.text)}</div>
-    </div>`;
-  }
-  container.innerHTML = html;
-}
-
-function updateSelectedInfo() {
-  if (selectedIdx < 0 || selectedIdx >= srtEntries.length) {
-    $('#selected-info').textContent = '—';
-    return;
-  }
-  const e = srtEntries[selectedIdx];
-  $('#selected-info').textContent = `#${e.index}: ${msToTimestamp(e.startMs)} → ${msToTimestamp(e.endMs)} — "${e.text.substring(0, 60)}${e.text.length > 60 ? '...' : ''}"`;
-}
-
-function updateOffsetDisplay() {
-  const sign = offsetMs >= 0 ? '+' : '';
-  const sec = (offsetMs / 1000).toFixed(3);
-  $('#offset-display').textContent = `${sign}${sec} sn`;
-}
-
-let lastActiveIdx = -1;
-
-function findActiveIndex(currentMs) {
-  let lo = 0, hi = srtEntries.length - 1;
-  while (lo <= hi) {
-    const mid = (lo + hi) >> 1;
-    const e = srtEntries[mid];
-    if (currentMs < e.startMs) { hi = mid - 1; }
-    else if (currentMs > e.endMs) { lo = mid + 1; }
-    else { return mid; }
-  }
-  return -1;
-}
-
-function updateActiveSubtitle(currentTimeSec) {
-  const currentMs = currentTimeSec * 1000;
-  const found = findActiveIndex(currentMs);
-  const overlay = $('#sub-overlay');
-  if (found >= 0) {
-    overlay.textContent = srtEntries[found].text;
-    overlay.hidden = false;
-  } else {
-    overlay.hidden = true;
-  }
-  const entries = $$('.sub-entry');
-  entries.forEach(el => el.classList.remove('active-playing'));
-  if (found >= 0) {
-    const el = document.querySelector(`.sub-entry[data-idx="${found}"]`);
-    if (el) {
-      el.classList.add('active-playing');
-      if (found !== lastActiveIdx) {
-        el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-        lastActiveIdx = found;
-      }
-    }
-  } else {
-    lastActiveIdx = -1;
-  }
-}
-
-function selectEntry(idx) {
-  selectedIdx = idx;
-  renderSubList();
-  updateSelectedInfo();
-  updateOffsetDisplay();
-  requestAnimationFrame(() => {
-    const el = document.querySelector(`.sub-entry[data-idx="${idx}"]`);
-    if (el) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-  });
-}
-
-function flashOffset() {
-  const el = $('#offset-display');
-  el.style.transition = 'none';
-  el.style.color = 'var(--success)';
-  el.style.transform = 'scale(1.15)';
-  requestAnimationFrame(() => {
-    el.style.transition = 'color 0.4s, transform 0.3s';
-    el.style.color = 'var(--accent)';
-    el.style.transform = 'scale(1)';
-  });
-}
-
-// ── SYNC ACTIONS ──
-
-function captureTime() {
-  if (selectedIdx < 0) { alert('Önce altyazı listesinden bir replik seçin.'); return; }
-  const videoTimeMs = $('#video-player').currentTime * 1000;
-  const srtTimeMs = srtEntries[selectedIdx].origStartMs;
-  offsetMs = Math.round(videoTimeMs - srtTimeMs);
-  renderSubList();
-  updateSelectedInfo();
-  updateOffsetDisplay();
-  flashOffset();
-}
-
-function manualAlign() {
-  if (selectedIdx < 0) { alert('Önce altyazı listesinden bir replik seçin.'); return; }
-  const raw = $('#manual-time').value.trim();
-  if (!raw) { alert('Lütfen bir zaman değeri girin.'); return; }
-  const ms = timestampToMs(raw);
-  if (ms >= 0) {
-    offsetMs = Math.round(ms - srtEntries[selectedIdx].origStartMs);
-  } else {
-    const m2 = /(\d{1,2}):(\d{2}):(\d{2})/.exec(raw);
-    if (m2) {
-      const h2 = parseInt(m2[1]), min2 = parseInt(m2[2]), s2 = parseInt(m2[3]);
-      offsetMs = Math.round((h2 * 3600000 + min2 * 60000 + s2 * 1000) - srtEntries[selectedIdx].origStartMs);
-    } else {
-      alert('Geçersiz zaman formatı. Örnek: 00:01:23,456 veya 00:01:23');
-      return;
-    }
-  }
-  $('#manual-time').value = '';
-  renderSubList();
-  updateSelectedInfo();
-  updateOffsetDisplay();
-  flashOffset();
-}
-
-function fineTune(deltaMs) {
-  offsetMs += deltaMs;
-  renderSubList();
-  updateSelectedInfo();
-  updateOffsetDisplay();
-  flashOffset();
-}
-
-function resetOffset() {
-  offsetMs = 0;
-  renderSubList();
-  updateSelectedInfo();
-  updateOffsetDisplay();
-  flashOffset();
-}
-
-// ── VIDEO CONTROLS ──
-
-function togglePlay() {
-  const v = $('#video-player');
-  if (v.paused) { v.play(); $('#play-btn').textContent = '⏸ Duraklat'; }
-  else { v.pause(); $('#play-btn').textContent = '▶ Oynat'; }
-}
-
-$('#video-player').addEventListener('play', () => $('#play-btn').textContent = '⏸ Duraklat');
-$('#video-player').addEventListener('pause', () => $('#play-btn').textContent = '▶ Oynat');
-
-function skipTime(sec) {
-  const v = $('#video-player');
-  v.currentTime = Math.max(0, Math.min(v.duration || Infinity, v.currentTime + sec));
-}
-
-// ── SAVE ──
-
-function downloadSRT() {
-  if (srtEntries.length === 0) return;
-  applyOffset();
-  let out = '';
-  for (const e of srtEntries) {
-    out += `${e.index}\n`;
-    out += `${msToTimestamp(e.startMs)} --> ${msToTimestamp(e.endMs)}\n`;
-    out += e.text.replace(/\n/g, '\r\n') + '\r\n\r\n';
-  }
-  const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
-  const textBytes = new TextEncoder().encode(out);
-  const merged = new Uint8Array(bom.length + textBytes.length);
-  merged.set(bom);
-  merged.set(textBytes, bom.length);
-  const blob = new Blob([merged], { type: 'text/plain;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = (srtFile ? srtFile.name.replace(/\.srt$/i,'') : 'subtitle') + '_sync.srt';
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-// ── UTILS ──
-
-function escapeHtml(str) {
-  const div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
-}
-
-// Keyboard shortcuts
-document.addEventListener('keydown', (e) => {
-  if (!$('#sync-screen').classList.contains('active')) return;
-  if (e.target.tagName === 'INPUT') return;
-
-  switch (e.key) {
-    case ' ': e.preventDefault(); togglePlay(); break;
-    case 'ArrowLeft': skipTime(-1); break;
-    case 'ArrowRight': skipTime(1); break;
-    case 'ArrowUp': skipTime(5); break;
-    case 'ArrowDown': skipTime(-5); break;
-    case 'c': captureTime(); break;
-  }
-});
-</script>
-
+<script src="vendor/mp4box.all.js"></script>
+<script src="js/formats.js"></script>
+<script src="js/waveform.js"></script>
+<script src="js/player.js"></script>
+<script src="js/sync.js"></script>
+<script src="js/app.js"></script>
 </body>
 </html>
